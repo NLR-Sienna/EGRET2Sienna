@@ -129,17 +129,23 @@ end
 #####################################################################################
 # Extract timestamps from an EGRET system dict
 #####################################################################################
-function _parse_timestamps(system_dict::AbstractDict; ds_ts= nothing)
+function _parse_timestamps(system_dict::AbstractDict; ds_ts=nothing)
     if ds_ts !== nothing
         @info "Using timestamps from associated HDF5 time series dataset."
         return Dates.unix2datetime.(ds_ts[:])
     end
 
+    if !haskey(system_dict, "time_keys") || isempty(system_dict["time_keys"])
+        @warn "No 'time_keys' found in EGRET JSON system dictionary. Returning empty timestamp vector."
+        return Dates.DateTime[]
+    end
+
+    time_keys = system_dict["time_keys"]
     date_format = Dates.DateFormat("Y-m-d H:M")
     try
-        return Dates.DateTime.(system_dict["time_keys"], date_format)
+        return Dates.DateTime.(time_keys, date_format)
     catch
-        n = length(system_dict["time_keys"])
+        n = length(time_keys)
         @warn "System timestamps in EGRET JSON are not formatted correctly. Assuming default hourly timestamps."
         start = Dates.DateTime("2024-01-01", Dates.DateFormat("Y-m-d"))
         return collect(StepRange(start, Dates.Hour(1), start + Dates.Hour(n - 1)))
