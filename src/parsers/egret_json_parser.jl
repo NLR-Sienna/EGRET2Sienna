@@ -397,19 +397,20 @@ function _parse_generators(components::DICT, bus_name_to_id::Dict,
         # generator and take the sum. This is a bit hacky but it allows us to leverage the time series data in the HDF5 without needing to 
         # restructure the JSON or PSY system construction logic.
         if p_max_raw isa AbstractDict
+            raw_vals = get(p_max_raw, "values", nothing)
             if haskey(p_max_raw, "time_series_uid") && ds_uid !== nothing
                 uid = p_max_raw["time_series_uid"]
                 if uid isa Vector
                     @info "Generator \"$gen_name\" has multiple time series UIDs. Attempting to attach time series data from HDF5 based on matching UIDs and summing values if multiple matches are found."
                     p_max_ts = nothing
                     p_max_mw = 0.0
-                    for (individual_uid, individual_sf) in zip(uid,p_max_raw["scale_factor"])
+                    for (individual_uid, individual_sf) in zip(uid, p_max_raw["scale_factor"])
                         if individual_uid in ds_uid[:]
                             @info "Attaching time series data from HDF5 to generator \"$gen_name\" based on matching UID: $individual_uid."
                             ts_values = get_chunk(ds_uid, ds_values, individual_uid)
                             p_max_mw += Float64(individual_sf)  
-                            p_max_ts = isnothing(p_max_ts) ? Dict("values" => ts_values*individual_sf) :
-                                        Dict("values" => (p_max_ts["values"] .+ ts_values*individual_sf))
+                            p_max_ts = isnothing(p_max_ts) ? Dict("values" => ts_values * individual_sf) :
+                                        Dict("values" => (p_max_ts["values"] .+ ts_values * individual_sf))
                         else
                             @warn "Generator \"$gen_name\" has a time series UID ($individual_uid) that doesn't match the HDF5 dataset UID. This UID will be skipped for time series attachment."
                         end
@@ -417,7 +418,7 @@ function _parse_generators(components::DICT, bus_name_to_id::Dict,
                 else
                     if uid in ds_uid[:]
                         @info "Attaching time series data from HDF5 to generator \"$gen_name\" based on matching UID."
-                        p_max_ts = Dict("values" => get_chunk(ds_uid, ds_values, uid)*Float64(p_max_raw["scale_factor"]))
+                        p_max_ts = Dict("values" => get_chunk(ds_uid, ds_values, uid) * Float64(p_max_raw["scale_factor"]))
                         p_max_mw = Float64(p_max_raw["scale_factor"]) == 1.0 ? haskey(p_max_raw, "reference_value") ? Float64(p_max_raw["reference_value"]) : maximum(p_max_ts["values"]) :
                                     maximum(p_max_ts["values"])
                         gen_ts_flag = true
@@ -427,23 +428,36 @@ function _parse_generators(components::DICT, bus_name_to_id::Dict,
                         p_max_ts = nothing
                     end
                 end
-            else
+            elseif !isnothing(raw_vals) && !isempty(raw_vals)
                 # Handle monthly or other time-varying p_max
-                p_max_vals = Float64.(get(p_max_raw, "values", [0.0]))
+                p_max_vals = Float64.(raw_vals)
                 p_max_mw   = maximum(p_max_vals)
-                if length(p_max_vals) ==12 
+                if length(p_max_vals) == 12 
                     @info "Generator \"$gen_name\" has time-varying p_max values but no time_series_uid. Building time series data for this generator using persistent values."
                     p_max_ts = Dict("values" => _fill_monthly_timeseries(p_max_raw, num_ts = num_ts))  # build a 8760-length time series by repeating the 12 monthly values
                 else
                     @warn "Generator \"$gen_name\" has time-varying p_max values but no time_series_uid. However, there are $(length(p_max_vals)) values which doesn't match expected 12 for monthly data. Building time series data for this generator using persistent values."
                     p_max_ts   = p_max_raw  # keep raw for time series attachment
                 end
-                
+            else
+                # No HDF5 loaded AND no inline "values" array: extract static capacity from scale_factor or reference_value
+                sf = get(p_max_raw, "scale_factor", nothing)
+                ref = get(p_max_raw, "reference_value", nothing)
+                if !isnothing(sf)
+                    p_max_mw = sf isa AbstractVector ? sum(Float64.(sf)) : Float64(sf)
+                elseif !isnothing(ref)
+                    p_max_mw = Float64(ref)
+                else
+                    p_max_mw = 0.0
+                end
+                @warn "Generator \"$gen_name\" references external time series or has null values, and no HDF5 dataset is loaded. Setting static p_max_mw = $p_max_mw with no time series."
+                p_max_ts = nothing
             end
-            gen_ts_flag = true
+            gen_ts_flag = !isnothing(p_max_ts)
         else
-            p_max_mw = Float64(p_max_raw)
+            p_max_mw = Float64(something(p_max_raw, 0.0))
             p_max_ts = nothing
+            gen_ts_flag = false
         end
 
         p_min_raw = get(comp_fields, "p_min", 0.0)
