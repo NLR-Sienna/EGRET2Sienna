@@ -303,7 +303,7 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 prime_mover,
                 fuel,
                 PSY.Service[],
-                10000.0,
+                PSY.INFINITE_TIME,
                 nothing,
                 gen.comp_ext,
             ))
@@ -323,8 +323,8 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 time_limits,
                 gen.mbase_mva,
                 false,
-                10000.0,
-                nothing,
+                PSY.INFINITE_TIME,
+                PSY.HydroGenerationCost(nothing),
                 PSY.Service[],
                 nothing,
                 gen.comp_ext,
@@ -349,10 +349,24 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 ramp_limits,
                 time_limits,
                 gen.mbase_mva,
+                PSY.PumpHydroStatus.OFF,
+                PSY.INFINITE_TIME,
+                PSY.HydroGenerationCost(nothing),
+                0.0,
+                (turbine = 1.0, pump = 1.0),
+                (turbine = 0.0, pump = 0.0),
+                (turbine = 0.0, pump = 0.0),
+                nothing,
+                1.0,
+                false,
+                PSY.PrimeMovers.PS,
+                PSY.Service[],
+                nothing,
+                gen.comp_ext,
             ))
 
         elseif psy_type == "RenewableDispatch"
-            op_cost = PSY.RenewableGenerationCost(PSY.CostCurve(PSY.IS.InputOutputCurve(PSY.IS.LinearFunctionData(0.0, 0.0))))
+            op_cost = PSY.RenewableGenerationCost(nothing)
             PSY.add_component!(sys, PSY.RenewableDispatch(
                 gen.name,
                 true,
