@@ -557,6 +557,7 @@ function _attach_load_timeseries!(sys::PSY.System, buses, loads_dict::AbstractDi
         bus_name = get(load_rec, "bus", nothing)
         isnothing(bus_name) && continue
         idx = findfirst(b -> b.name == bus_name, buses)
+        isnothing(idx) && continue # For now, will skip when distributed_bus is specified
         bus = buses[idx]
 
         load_ts = getfield(bus,Symbol("load_ts"))
