@@ -517,7 +517,7 @@ function _parse_generators(components::DICT, bus_name_to_id::Dict,
                 comp_ext["plant_id"] = get.(eia_mapping["values"], "plantid", 99999)
                 comp_ext["gen_id"] = get.(eia_mapping["values"], "genid", "None")
             else
-                comp_ext["plant_id"] = get(eia_mapping, "plantid", 99999)
+                comp_ext["plant_id"] = Int(get(eia_mapping, "plantid", 99999))
                 comp_ext["gen_id"] = get(eia_mapping, "genid", "None")
             end
         end
@@ -563,6 +563,85 @@ function _parse_generators(components::DICT, bus_name_to_id::Dict,
 end
 
 #####################################################################################
+# Parse EGRET Storage elements → Vector of NamedTuples
+#####################################################################################
+function _parse_storages(components::DICT, bus_name_to_id::Dict,
+    area_bus_mapping::Dict, zone_bus_mapping::Dict,
+    base_MVA::Float64) where {DICT <: AbstractDict}
+
+    storages = map(collect(pairs(components))) do (stor_name, comp_fields)
+        bus_raw  = get(comp_fields, "bus", nothing)
+        bus_name = _resolve_bus(bus_raw)
+
+        area_name = let a = get(comp_fields, "area", nothing)
+            if !isnothing(a)
+                string(a)
+            else
+                # Look up from bus → area mapping
+                found = nothing
+                if !isnothing(bus_name)
+                    for (area, buses) in area_bus_mapping
+                        if bus_name in buses; found = area; break; end
+                    end
+                end
+                found
+            end
+        end
+
+        zone_name = let z = get(comp_fields, "zone", nothing)
+            if !isnothing(z)
+                string(z)
+            else
+                found = nothing
+                if !isnothing(bus_name)
+                    for (zone, buses) in zone_bus_mapping
+                        if bus_name in buses; found = zone; break; end
+                    end
+                end
+                found
+            end
+        end
+
+        # ── EIA Mapping ──────────────────────────────────────────────────────
+        eia_mapping = get(comp_fields, "eia", nothing)
+
+        comp_ext = Dict{String, Any}()
+        if (eia_mapping !== nothing && eia_mapping isa AbstractDict)
+            if (haskey(eia_mapping, "data_type") && (eia_mapping["data_type"] == "multiple_eia"))
+                comp_ext["plant_id"] = get.(eia_mapping["values"], "plantid", 99999)
+                comp_ext["gen_id"] = get.(eia_mapping["values"], "genid", "None")
+            else
+                comp_ext["plant_id"] = Int(get(eia_mapping, "plantid", 99999))
+                comp_ext["gen_id"] = get(eia_mapping, "genid", "None")
+            end
+        end
+
+        (
+            name             = stor_name,
+            bus_name         = bus_name,
+            model_type       = string(get(comp_fields, "model_type", "BA")), 
+            max_discharge_mw   = Float64(get(comp_fields, "max_discharge_rate", 0.0)),  
+            min_discharge_mw   = Float64(get(comp_fields, "min_discharge_rate", 0.0)),
+            max_charge_mw      = Float64(get(comp_fields, "max_charge_rate", 0.0)),
+            min_charge_mw     = Float64(get(comp_fields, "min_charge_rate", 0.0)),
+            energy_cap        = Float64(get(comp_fields, "energy_capacity", 0.0)), 
+            initial_SoC       = Float64(get(comp_fields, "initial_state_of_charge", 0.0)),    
+            min_SoC            = Float64(get(comp_fields, "minimum_state_of_charge", 0.0)),
+            charge_efficiency  = Float64(get(comp_fields, "charge_efficiency", 1.0)),
+            discharge_efficiency = Float64(get(comp_fields, "discharge_efficiency", 1.0)),
+            id                   = string(get(comp_fields, "model_type", "")),
+            mbase_mva        = Float64(get(comp_fields, "mbase", base_MVA)),
+            in_service       = Bool(get(comp_fields, "in_service", true)),
+            area_name        = area_name,
+            zone_name        = zone_name,
+            comp_ext        = comp_ext
+        )
+    end
+    @info "Successfully parsed storages in the JSON."
+    return storages
+end
+
+#####################################################################################
 # Select the areas argument for time_series_processing
 #####################################################################################
 _areas_da(EGRET_json_DA::AbstractDict, area_bus_mapping::AbstractDict) =
@@ -603,6 +682,9 @@ function parse_egretjson(EGRET_json_DA::DICT;
     generators, gen_ts_flag = _parse_generators(
         elements["generator"], bus_to_id, area_bus_mapping, zone_bus_mapping, base_MVA, ds_uid = ds_uid, ds_values = ds_values, num_ts = length(timestamps_DA))
 
+    storages, gen_ts_flag = _parse_storages(
+            elements["storage"], bus_to_id, area_bus_mapping, zone_bus_mapping, base_MVA)
+
     areas_DA      = _areas_da(EGRET_json_DA, area_bus_mapping)
 
     # Close h5 file if open
@@ -616,16 +698,19 @@ function parse_egretjson(EGRET_json_DA::DICT;
         buses            = buses,
         branches         = branches,
         generators       = generators,
+        storages        = storages,
         area_bus_mapping = area_bus_mapping,
         zone_bus_mapping = zone_bus_mapping,
         system_DA        = EGRET_json_DA["system"],
         loads_DA         = elements["load"],
         gen_elements_DA  = elements["generator"],
+        stor_elements_DA = elements["storage"],
         areas_DA         = areas_DA,
         timestamps_DA    = timestamps_DA,
         system_RT        = nothing,
         loads_RT         = nothing,
         gen_elements_RT  = nothing,
+        stor_elements_RT = nothing,
         areas_RT         = nothing,
         timestamps_RT    = nothing,
         load_ts_flag     = load_ts_flag,
