@@ -302,7 +302,7 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 false,
                 prime_mover,
                 fuel,
-                nothing,
+                PSY.Service[],
                 10000.0,
                 nothing,
                 gen.comp_ext,
@@ -325,7 +325,7 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 false,
                 10000.0,
                 nothing.
-                nothing,
+                PSY.Service[],
                 nothing,
                 gen.comp_ext,
             ))
@@ -365,7 +365,7 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 1.0,
                 op_cost,
                 gen.mbase_mva,
-                nothing,
+                PSY.Service[],
                 nothing,
                 gen.comp_ext,
             ))
@@ -381,7 +381,7 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 prime_mover,
                 1.0,
                 gen.mbase_mva,
-                nothing,
+                PSY.Service[],
                 nothing,
                 gen.comp_ext,
             ))
