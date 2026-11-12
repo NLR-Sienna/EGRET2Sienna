@@ -682,7 +682,7 @@ function parse_egretjson(EGRET_json_DA::DICT;
     generators, gen_ts_flag = _parse_generators(
         elements["generator"], bus_to_id, area_bus_mapping, zone_bus_mapping, base_MVA, ds_uid = ds_uid, ds_values = ds_values, num_ts = length(timestamps_DA))
 
-    storages, gen_ts_flag = _parse_storages(
+    storages = _parse_storages(
             elements["storage"], bus_to_id, area_bus_mapping, zone_bus_mapping, base_MVA)
 
     areas_DA      = _areas_da(EGRET_json_DA, area_bus_mapping)
