@@ -79,6 +79,8 @@ const _MODEL_TYPE_TO_PRIME_MOVER = Dict{String, PSY.PrimeMovers}(
     "HYDRO" => PSY.PrimeMovers.HY,
     "ROR"   => PSY.PrimeMovers.HY,
     "PS"    => PSY.PrimeMovers.PS,
+    "BA"    => PSY.PrimeMovers.BA,
+    "FW"   => PSY.PrimeMovers.FW,
 )
 
 # Infer prime mover using model_type first, then unit_type, then name heuristics.
@@ -407,6 +409,50 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
 end
 
 #####################################################################################
+# Build storage components
+#####################################################################################
+function _build_storages!(sys::PSY.System, storages, base_MVA::Float64)
+    for stor in storages
+        stor.in_service || continue
+
+        bus = PSY.get_component(PSY.ACBus, sys, something(stor.bus_name, ""))
+        if isnothing(bus)
+            @warn "Storage \"$(stor.name)\": bus \"$(stor.bus_name)\" not found; skipping."
+            continue
+        end
+
+        @debug "Parsing storage \"$(stor.name)\":", stor
+        prime_mover = _infer_prime_mover(gen)
+
+        PSY.add_component!(sys, PSY.EnergyReservoirStorage(
+            stor.name,
+            true,
+            bus,
+            prime_mover,
+            PSY.StorageTech.OTHER_CHEM,
+            stor.energy_cap/ base_MVA,
+            (min= stor.min_SoC, max=1.0),
+            stor.initial_SoC,
+            stor.max_charge_mw / base_MVA,
+            0.0,
+            (min= stor.min_charge_mw / base_MVA, max=stor.max_charge_mw / base_MVA),
+            (min= stor.min_discharge_mw / base_MVA, max=stor.max_discharge_mw / base_MVA),
+            (in = stor.charge_efficiency, out = stor.discharge_efficiency),
+            0.0,
+            (min = 0.0, max = 0.0),
+            base_MVA,
+            PSY.StorageCost(nothing), 
+            0.0,
+            0.0,
+            0,
+            PSY.Service[],
+            nothing,
+            stor.comp_ext
+        ))
+    end
+end
+
+#####################################################################################
 # Build VariableReserve products
 #####################################################################################
 function _build_reserves!(sys::PSY.System, system_dict::AbstractDict,
@@ -631,6 +677,7 @@ function build_psy_system(data;
     _build_buses!(sys, data.buses, data.base_MVA)
     _build_branches!(sys, data.branches, data.base_MVA)
     _build_generators!(sys, data.generators, data.base_MVA)
+    _build_storages!(sys, data.storages, data.base_MVA)
     _build_reserves!(sys, system_dict, gen_elements, data.area_bus_mapping, data.generators)
 
     # Attach time series
