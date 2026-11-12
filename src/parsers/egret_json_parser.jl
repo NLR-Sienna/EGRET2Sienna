@@ -508,6 +508,20 @@ function _parse_generators(components::DICT, bus_name_to_id::Dict,
 
         fuel_cost = Float64(get(comp_fields, "fuel_cost", 0.0))
 
+        # ── EIA Mapping ──────────────────────────────────────────────────────
+        eia_mapping = get(comp_fields, "eia", nothing)
+
+        comp_ext = Dict{String, Any}()
+        if (eia_maping !== nothing && eia_maping isa AbstractDict)
+            if haskey(eia_mapping, "data_type" && eia_mapping["data_type"] == "multiple_eia")
+                comp_ext["plant_id"] = get.(eia_mapping["values"], "plantid", 99999)
+                comp_ext["gen_id"] = get.(eia_mapping["values"], "genid", "None")
+            else
+                comp_ext["plant_id"] = get(eia_mapping, "plantid", 99999)
+                comp_ext["gen_id"] = get(eia_mapping, "genid", "None")
+            end
+        end
+
         (
             name             = gen_name,
             bus_name         = bus_name,
@@ -540,6 +554,7 @@ function _parse_generators(components::DICT, bus_name_to_id::Dict,
             area_name        = area_name,
             zone_name        = zone_name,
             generator_type   = string(get(comp_fields, "generator_type", get(comp_fields, "unit_type", "thermal"))),
+            comp_ext        = comp_ext
         )
     end
 

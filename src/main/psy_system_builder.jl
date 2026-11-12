@@ -302,6 +302,10 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 false,
                 prime_mover,
                 fuel,
+                nothing,
+                10000.0,
+                nothing,
+                gen.comp_ext,
             ))
 
         elseif psy_type == "HydroDispatch"
@@ -318,6 +322,12 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 ramp_limits,
                 time_limits,
                 gen.mbase_mva,
+                false,
+                10000.0,
+                nothing.
+                nothing,
+                nothing,
+                gen.comp_ext,
             ))
 
         elseif psy_type == "HydroPumpedStorage"
@@ -355,6 +365,9 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 1.0,
                 op_cost,
                 gen.mbase_mva,
+                nothing,
+                nothing,
+                gen.comp_ext,
             ))
 
         elseif psy_type == "RenewableNonDispatch"
@@ -368,6 +381,9 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 prime_mover,
                 1.0,
                 gen.mbase_mva,
+                nothing,
+                nothing,
+                gen.comp_ext,
             ))
 
         else
