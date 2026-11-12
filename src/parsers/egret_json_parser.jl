@@ -513,7 +513,7 @@ function _parse_generators(components::DICT, bus_name_to_id::Dict,
 
         comp_ext = Dict{String, Any}()
         if (eia_mapping !== nothing && eia_mapping isa AbstractDict)
-            if haskey(eia_mapping, "data_type" && eia_mapping["data_type"] == "multiple_eia")
+            if (haskey(eia_mapping, "data_type") && (eia_mapping["data_type"] == "multiple_eia"))
                 comp_ext["plant_id"] = get.(eia_mapping["values"], "plantid", 99999)
                 comp_ext["gen_id"] = get.(eia_mapping["values"], "genid", "None")
             else
