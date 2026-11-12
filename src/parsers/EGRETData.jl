@@ -38,7 +38,7 @@ mutable struct EGRETData
         base_MVA, rt_flag=false, load_ts_flag=false, gen_ts_flag=false,
         buses, branches, generators, storages, area_bus_mapping, zone_bus_mapping,
         system_DA, loads_DA, gen_elements_DA, stor_elements_DA, areas_DA, timestamps_DA,
-        system_RT=nothing, loads_RT=nothing, gen_elements_RT=nothing, stor_elements_RT=nothing
+        system_RT=nothing, loads_RT=nothing, gen_elements_RT=nothing, stor_elements_RT=nothing,
         areas_RT=nothing, timestamps_RT=nothing # RT fields start as nothing
     )
         new(
