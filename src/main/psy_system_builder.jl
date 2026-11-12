@@ -422,7 +422,7 @@ function _build_storages!(sys::PSY.System, storages, base_MVA::Float64)
         end
 
         @debug "Parsing storage \"$(stor.name)\":", stor
-        prime_mover = _infer_prime_mover(gen)
+        prime_mover = _infer_prime_mover(stor)
 
         PSY.add_component!(sys, PSY.EnergyReservoirStorage(
             stor.name,
