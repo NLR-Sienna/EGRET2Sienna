@@ -324,7 +324,7 @@ function _build_generators!(sys::PSY.System, generators, base_MVA::Float64)
                 gen.mbase_mva,
                 false,
                 10000.0,
-                nothing.
+                nothing,
                 PSY.Service[],
                 nothing,
                 gen.comp_ext,
